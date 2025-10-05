@@ -8,7 +8,7 @@ from sklearn.metrics import (
     accuracy_score, precision_score, recall_score, f1_score,
     roc_auc_score, roc_curve, confusion_matrix
 )
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
 import xgboost as xgb
 
 from preprocess import load_data, preprocess
@@ -16,18 +16,6 @@ from preprocess import load_data, preprocess
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT_CSV = ROOT / "model_comparison.csv"
 OUTPUT_PNG = ROOT / "model_comparison.png"
-
-def train_random_forest(pre, X_train, y_train):
-    rf = RandomForestClassifier(random_state=42, n_jobs=-1)
-    pipe = Pipeline([('prep', pre), ('clf', rf)])
-    grid = {
-        'clf__n_estimators': [150, 300],
-        'clf__max_depth': [None, 20],
-        'clf__min_samples_leaf': [1, 2]
-    }
-    gs = GridSearchCV(pipe, grid, cv=3, scoring='f1', n_jobs=-1, verbose=0)
-    t0 = time.perf_counter(); gs.fit(X_train, y_train); t1 = time.perf_counter()
-    return gs.best_estimator_, t1 - t0
 
 def train_xgboost(pre, X_train, y_train):
     xgb_model = xgb.XGBClassifier(
@@ -40,6 +28,22 @@ def train_xgboost(pre, X_train, y_train):
         'clf__max_depth': [4, 8],
         'clf__learning_rate': [0.05, 0.1],
         'clf__subsample': [0.8, 1.0]
+    }
+    gs = GridSearchCV(pipe, grid, cv=3, scoring='f1', n_jobs=-1, verbose=0)
+    t0 = time.perf_counter(); gs.fit(X_train, y_train); t1 = time.perf_counter()
+    return gs.best_estimator_, t1 - t0
+
+def train_logistic_regression(pre, X_train, y_train):
+    lr = LogisticRegression(
+        solver='liblinear',
+        max_iter=2000,
+        class_weight='balanced',
+        random_state=42
+    )
+    pipe = Pipeline([('prep', pre), ('clf', lr)])
+    grid = {
+        'clf__C': [0.25, 1.0, 4.0],
+        'clf__penalty': ['l1', 'l2']
     }
     gs = GridSearchCV(pipe, grid, cv=3, scoring='f1', n_jobs=-1, verbose=0)
     t0 = time.perf_counter(); gs.fit(X_train, y_train); t1 = time.perf_counter()
@@ -62,22 +66,22 @@ def main():
     train, test = load_data()
     pre, X_train, X_test, y_train, y_test = preprocess(train, test)
 
-    rf, rf_t = train_random_forest(pre, X_train, y_train)
-    xgb, xgb_t = train_xgboost(pre, X_train, y_train)
+    xgb_model, xgb_t = train_xgboost(pre, X_train, y_train)
+    lr_model,  lr_t  = train_logistic_regression(pre, X_train, y_train)
 
-    rf_res = evaluate(rf, X_test, y_test, 'RandomForest')
-    xgb_res = evaluate(xgb, X_test, y_test, 'XGBoost')
+    xgb_res = evaluate(xgb_model, X_test, y_test, 'XGBoost')
+    lr_res  = evaluate(lr_model,  X_test, y_test, 'LogReg')
 
     df = pd.DataFrame([
-        {'Model':'RandomForest', 'Accuracy':rf_res['acc'], 'Precision':rf_res['prec'], 'Recall':rf_res['rec'], 'F1':rf_res['f1'], 'AUC':rf_res['auc'], 'Train(s)':rf_t},
         {'Model':'XGBoost', 'Accuracy':xgb_res['acc'], 'Precision':xgb_res['prec'], 'Recall':xgb_res['rec'], 'F1':xgb_res['f1'], 'AUC':xgb_res['auc'], 'Train(s)':xgb_t},
+        {'Model':'LogReg',  'Accuracy':lr_res['acc'],  'Precision':lr_res['prec'],  'Recall':lr_res['rec'],  'F1':lr_res['f1'],  'AUC':lr_res['auc'],  'Train(s)':lr_t},
     ])
     df.to_csv(OUTPUT_CSV, index=False)
 
     plt.figure(figsize=(6,6))
-    plt.plot(rf_res['fpr'], rf_res['tpr'], label=f"RF (AUC={rf_res['auc']:.3f})")
     plt.plot(xgb_res['fpr'], xgb_res['tpr'], label=f"XGB (AUC={xgb_res['auc']:.3f})")
-    plt.plot([0,1],[0,1],'--', color='gray')
+    plt.plot(lr_res['fpr'],  lr_res['tpr'],  label=f"LR (AUC={lr_res['auc']:.3f})")
+    plt.plot([0,1],[0,1],'--')
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')
     plt.title('ROC Curve Comparison')
