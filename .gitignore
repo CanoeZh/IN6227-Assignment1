@@ -1,6 +1,64 @@
-venv/
+# --- Python build / cache files ---
 __pycache__/
-.DS_Store
+*.py[cod]
+*$py.class
+
+# --- Virtual environments ---
+.venv/
 venv/
-__pycache__/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# --- Jupyter / Logs / Reports ---
+.ipynb_checkpoints/
+*.log
+*.csv
+*.png
+
+# --- macOS system files ---
 .DS_Store
+.AppleDouble
+.LSOverride
+
+# --- Editors / IDEs ---
+.vscode/
+.idea/
+.spyproject
+.ropeproject
+.pydevproject
+
+# --- Packaging / Distribution ---
+build/
+dist/
+.eggs/
+*.egg-info/
+*.egg
+MANIFEST
+
+# --- Coverage / Testing ---
+.tox/
+.nox/
+.coverage
+.cache
+.pytest_cache/
+htmlcov/
+
+# --- Type checking / linters ---
+.mypy_cache/
+.ruff_cache/
+.dmypy.json
+.pytype/
+cython_debug/
+
+# --- Local environment files ---
+.env
+.envrc
+.pdm-python
+.pdm-build/
+.pypirc
+
+# --- Outputs (safe to regenerate) ---
+model_comparison.csv
+model_comparison.png
