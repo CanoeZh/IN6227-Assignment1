@@ -12,13 +12,13 @@ COLUMNS = [
     'hours-per-week','native-country','income'
 ]
 
-DATA_DIR = Path(__file__).resolve().parents[1] / "census+income"
+DATA_DIR = Path(__file__).resolve().parent / "census+income"  
 TRAIN_PATH = DATA_DIR / "adult.data"
 TEST_PATH  = DATA_DIR / "adult.test"
 
 def load_data():
     train = pd.read_csv(TRAIN_PATH, names=COLUMNS, skipinitialspace=True, na_values='?')
-    test  = pd.read_csv(TEST_PATH,  names=COLUMNS, skipinitialspace=True, na_values='?')
+    test  = pd.read_csv(TEST_PATH, names=COLUMNS, skipinitialspace=True, na_values='?', skiprows=1)  # 加 skiprows=1
     test['income'] = test['income'].astype(str).str.replace('.', '', regex=False).str.strip()
     return train, test
 
@@ -39,7 +39,7 @@ def preprocess(train, test):
     numeric = Pipeline([('imputer', SimpleImputer(strategy='median'))])
     categorical = Pipeline([
         ('imputer', SimpleImputer(strategy='most_frequent')),
-        ('onehot', OneHotEncoder(handle_unknown='ignore', sparse=False))
+        ('onehot', OneHotEncoder(handle_unknown='ignore', sparse_output=False))  # 改成 sparse_output
     ])
 
     preprocessor = ColumnTransformer([
